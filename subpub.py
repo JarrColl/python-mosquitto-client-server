@@ -12,8 +12,6 @@ from paho.mqtt.reasoncodes import ReasonCode
 
 broker = "rule100.caia.swin.edu.au"
 port = 8883
-# topic = "private/mqtt"
-# Generate a Client ID with the publish prefix.
 client_id = f"publish-{random.randint(0, 1000)}"
 username = "102988098"
 password = "jarron"
@@ -76,7 +74,7 @@ def subscribe(client: Client):
 def run():
     client = connect_mqtt()
     error_code = client.loop_start()
-    error_code = client.loop_stop()
+    # error_code = client.loop_stop()
     if error_code == MQTTErrorCode.MQTT_ERR_INVAL:
         raise MQTTException(
             "Client loop stop was called but there was no running client loop on the thread."
@@ -105,8 +103,6 @@ def run():
         time.sleep(1)
         if f > 30:
             return
-
-
 
 
 if __name__ == "__main__":

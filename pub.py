@@ -18,7 +18,7 @@ client_id = f"publish-{random.randint(0, 1000)}"
 username = "102988098"
 password = "jarron"
 topic = sys.argv[1]
-cafile = "./ca.crt"
+cafile = "./certs/ca.crt"
 
 
 def connect_mqtt() -> Client:
@@ -59,7 +59,7 @@ def publish(client: Client):
         else:
             print(f"Failed to send message to topic {topic}")
         msg_count += 1
-        if msg_count > 5:
+        if msg_count > 10:
             break
 
 
