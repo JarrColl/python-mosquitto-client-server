@@ -1,7 +1,6 @@
-import random
+from logging import error
 import sys
 import time
-from logging import error
 from typing import Any, Dict, Literal
 
 from paho.mqtt import MQTTException
@@ -16,17 +15,15 @@ from subpubClass import SubPub
 READ_X_SECONDS = 5
 SALINITY_DROP_RATE = 5
 
-salinity_topic = "102988098/salinity"
-moisture_topic = "102988098/moisture"
-sub_topics = [("public/#", 1), ("102988098/toosalty", 0), ("102988098/toodry", 0)]
+light_topic = "102988098/light"
+sub_topics = [("public/#", 1), ("102988098/toodark", 1)]
 
-#TODO: make them use all their own accounts
+# TODO: move everythong to public and give everything its own username then have each client publish its data also to its private user topic.
 cafile = "./certs/ca.crt"
 username = "102988098"
 password = "jarron"
 
 shutdown_flag = False
-
 
 def on_connect( client: Client, userdata: Any, flags: ConnectFlags, rc: ReasonCode, properties: Properties | None,
 ):
@@ -38,19 +35,11 @@ def on_connect( client: Client, userdata: Any, flags: ConnectFlags, rc: ReasonCo
 
 def on_message(client: Client, userdata: Any, msg: MQTTMessage):
     payload = msg.payload.decode()
-    print("hello")
-    if msg.topic == "102988098/toosalty":
+    if msg.topic == "102988098/toodark":
         if payload == "0":
-            userdata["desalinate"] = -1
+            userdata["light"] = 0
         elif payload == "1":
-            userdata["desalinate"] = 1
-    elif msg.topic == "102988098/toodry":
-        if payload == "0":
-            print("Not Pumping")
-            userdata["pump"] = -1
-        elif payload == "1":
-            print("Pumping")
-            userdata["pump"] = 1
+            userdata["light"] = 100
     elif msg.topic == "public/stop":
         if payload == "stop":
             print("Stop message sent, shutting down.")
@@ -60,34 +49,16 @@ def on_message(client: Client, userdata: Any, msg: MQTTMessage):
     print(f"Received `{payload}` from `{msg.topic}` topic")
 
 
-def generate_moisture_value(moisture: int, direction: Literal[-1, 1]) -> int:
-    """Simulates a sensor reading the moisutre value of the soil."""
-    new_moisture = round(moisture + (direction * random.random() * 5))
-    if new_moisture > 100 or new_moisture < 0:
-        return moisture
 
-    moisture = new_moisture
-    return new_moisture
-
-
-def generate_salinity_value(salinity: int, direction: Literal[-1, 1]) -> int:
-    """Simulates a sensor reading the salinity value of the soil."""
-    if direction == -1:
-        if random.random() > 0.75:
-            return min(salinity + 30, 100)
-        else:
-            return salinity
-    elif direction == 1:
-        return max(salinity - SALINITY_DROP_RATE, 0)
-
+def generate_light_value(light_avg: float, count: int, curr_light: Literal[0, 100]) -> float:
+    return round(light_avg + (curr_light - light_avg) / count, 2)
 
 def run():
     global shutdown_flag
     subpub = SubPub(username, password)
-
-    moisture = 70
-    salinity = 0
-    userdata: Dict[str, Literal[-1, 1]] = {"pump": -1, "desalinate": -1}
+    light = 70
+    num_readings = 1
+    userdata: Dict[str, Literal[0, 100]] = {"light": 0}
 
     client = subpub.connect_mqtt(on_connect, cafile, userdata)
     subpub.loop_start()
@@ -99,10 +70,8 @@ def run():
         while not shutdown_flag:
             loop_secs = loop_secs % READ_X_SECONDS
             if loop_secs == 0:
-                moisture = generate_moisture_value(moisture, userdata["pump"])
-                salinity = generate_salinity_value(salinity, userdata["desalinate"])
-                subpub.publish(moisture_topic, f"{moisture}")
-                subpub.publish(salinity_topic, f"{salinity}")
+                light = generate_light_value(light, num_readings, userdata["light"])
+                subpub.publish(light_topic, f"{light}")
             loop_secs += 1
             time.sleep(1)
     except Exception as e:

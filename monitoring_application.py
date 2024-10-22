@@ -113,7 +113,7 @@ def config_tk_window(root: tk.Tk, subpub: SubPub) -> tk.Tk:
     )
     subfeed_text_widget.grid(row=3, column=0, sticky="nsew", padx=10, pady=10)
 
-    def tk_on_message(event: tkinter.Event[Misc]):
+    def tk_on_message(event: tkinter.Event):
         try:
             event_data: str = sub_queue.get_nowait()
             if event_data:
