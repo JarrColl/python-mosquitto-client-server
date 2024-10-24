@@ -14,16 +14,24 @@ from paho.mqtt.reasoncodes import ReasonCode
 from subpubClass import SubPub
 
 READ_X_SECONDS = 5
-SALINITY_DROP_RATE = 5
+SALINITY_DROP_RATE = 8
 
-salinity_topic = "102988098/salinity"
-moisture_topic = "102988098/moisture"
-sub_topics = [("public/#", 1), ("102988098/toosalty", 0), ("102988098/toodry", 0)]
+salinity_topic = "public/salinity"
+moisture_topic = "public/moisture"
+
+toosalty_topic = "public/toosalty"
+toodry_topic = "public/toodry"
+toodark_topic = "public/toodark"
+
+stop_topic = "public/stop"
+
+
+sub_topics = [("public/#", 1), (toosalty_topic, 0), (toodry_topic, 0)]
 
 #TODO: make them use all their own accounts
 cafile = "./certs/ca.crt"
-username = "102988098"
-password = "jarron"
+username = "soil"
+password = "soil"
 
 shutdown_flag = False
 
@@ -39,12 +47,12 @@ def on_connect( client: Client, userdata: Any, flags: ConnectFlags, rc: ReasonCo
 def on_message(client: Client, userdata: Any, msg: MQTTMessage):
     payload = msg.payload.decode()
     print("hello")
-    if msg.topic == "102988098/toosalty":
+    if msg.topic == toosalty_topic:
         if payload == "0":
             userdata["desalinate"] = -1
         elif payload == "1":
             userdata["desalinate"] = 1
-    elif msg.topic == "102988098/toodry":
+    elif msg.topic == toodry_topic:
         if payload == "0":
             print("Not Pumping")
             userdata["pump"] = -1
@@ -90,7 +98,9 @@ def run():
     userdata: Dict[str, Literal[-1, 1]] = {"pump": -1, "desalinate": -1}
 
     client = subpub.connect_mqtt(on_connect, cafile, userdata)
-    subpub.loop_start()
+    success = subpub.loop_start()
+    if not success: return
+
     subpub.subscribe(on_message, sub_topics)
 
     loop_secs = 0

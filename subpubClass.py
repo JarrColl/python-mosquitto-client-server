@@ -78,6 +78,8 @@ class SubPub:
             if result.rc != MQTTErrorCode.MQTT_ERR_SUCCESS:
                 print(f"Failed to send message to topic {pub_topic}")
 
+            self.client.publish(f"{self.username}/logs", msg, qos=1)
+
     def subscribe(self, on_message: CallbackOnMessage, sub_topics: Any):
         if self.client:
             error_code = self.client.subscribe(sub_topics)[0]

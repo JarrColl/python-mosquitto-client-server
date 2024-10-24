@@ -15,13 +15,17 @@ from subpubClass import SubPub
 READ_X_SECONDS = 5
 SALINITY_DROP_RATE = 5
 
-light_topic = "102988098/light"
-sub_topics = [("public/#", 1), ("102988098/toodark", 1)]
+private_logging = "light/logs"
 
-# TODO: move everythong to public and give everything its own username then have each client publish its data also to its private user topic.
+light_topic = "public/light"
+toodark_topic = "public/toodark"
+stop_topic = "public/stop"
+
+sub_topics = [("public/#", 1), (toodark_topic, 1)]
+
 cafile = "./certs/ca.crt"
-username = "102988098"
-password = "jarron"
+username = "light"
+password = "light"
 
 shutdown_flag = False
 
@@ -35,12 +39,12 @@ def on_connect( client: Client, userdata: Any, flags: ConnectFlags, rc: ReasonCo
 
 def on_message(client: Client, userdata: Any, msg: MQTTMessage):
     payload = msg.payload.decode()
-    if msg.topic == "102988098/toodark":
+    if msg.topic == toodark_topic:
         if payload == "0":
             userdata["light"] = 0
         elif payload == "1":
             userdata["light"] = 100
-    elif msg.topic == "public/stop":
+    elif msg.topic == stop_topic:
         if payload == "stop":
             print("Stop message sent, shutting down.")
             global shutdown_flag
@@ -61,7 +65,8 @@ def run():
     userdata: Dict[str, Literal[0, 100]] = {"light": 0}
 
     client = subpub.connect_mqtt(on_connect, cafile, userdata)
-    subpub.loop_start()
+    success = subpub.loop_start()
+    if not success: return
     subpub.subscribe(on_message, sub_topics)
 
     loop_secs = 0
@@ -70,6 +75,7 @@ def run():
         while not shutdown_flag:
             loop_secs = loop_secs % READ_X_SECONDS
             if loop_secs == 0:
+                num_readings += 1
                 light = generate_light_value(light, num_readings, userdata["light"])
                 subpub.publish(light_topic, f"{light}")
             loop_secs += 1
