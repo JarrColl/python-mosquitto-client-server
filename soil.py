@@ -21,12 +21,11 @@ moisture_topic = "public/moisture"
 
 toosalty_topic = "public/toosalty"
 toodry_topic = "public/toodry"
-toodark_topic = "public/toodark"
 
 stop_topic = "public/stop"
 
 
-sub_topics = [("public/#", 1), (toosalty_topic, 0), (toodry_topic, 0)]
+sub_topics = [("public/stop", 1), (toosalty_topic, 0), (toodry_topic, 0)]
 
 #TODO: make them use all their own accounts
 cafile = "./certs/ca.crt"
@@ -97,14 +96,24 @@ def run():
     salinity = 0
     userdata: Dict[str, Literal[-1, 1]] = {"pump": -1, "desalinate": -1}
 
-    client = subpub.connect_mqtt(on_connect, cafile, userdata)
-    success = subpub.loop_start()
-    if not success: return
-
-    subpub.subscribe(on_message, sub_topics)
-
-    loop_secs = 0
+    client = None
     try:
+        client = subpub.connect_mqtt(on_connect, cafile, userdata)
+        subpub.loop_start()
+    except TimeoutError:
+        print("The client connection timed out...")
+        return
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return
+
+    if not client:
+        return
+
+    try:
+        subpub.subscribe(on_message, sub_topics)
+
+        loop_secs = 0
         # Main loop
         while not shutdown_flag:
             loop_secs = loop_secs % READ_X_SECONDS
@@ -116,7 +125,7 @@ def run():
             loop_secs += 1
             time.sleep(1)
     except Exception as e:
-        error(e)
+        print(f"An error occurred: {e}")
     finally:
         client.disconnect()
         client.loop_stop()

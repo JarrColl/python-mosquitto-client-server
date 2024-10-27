@@ -15,13 +15,11 @@ from subpubClass import SubPub
 READ_X_SECONDS = 5
 SALINITY_DROP_RATE = 5
 
-private_logging = "light/logs"
-
 light_topic = "public/light"
 toodark_topic = "public/toodark"
 stop_topic = "public/stop"
 
-sub_topics = [("public/#", 1), (toodark_topic, 1)]
+sub_topics = [("public/stop", 1), (toodark_topic, 1)]
 
 cafile = "./certs/ca.crt"
 username = "light"
@@ -64,13 +62,24 @@ def run():
     num_readings = 1
     userdata: Dict[str, Literal[0, 100]] = {"light": 0}
 
-    client = subpub.connect_mqtt(on_connect, cafile, userdata)
-    success = subpub.loop_start()
-    if not success: return
-    subpub.subscribe(on_message, sub_topics)
-
-    loop_secs = 0
+    client = None
     try:
+        client = subpub.connect_mqtt(on_connect, cafile, userdata)
+        subpub.loop_start()
+    except TimeoutError:
+        print("The client connection timed out...")
+        return
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return
+
+    if not client:
+        return
+
+    try:
+        subpub.subscribe(on_message, sub_topics)
+
+        loop_secs = 0
         # Main loop
         while not shutdown_flag:
             loop_secs = loop_secs % READ_X_SECONDS

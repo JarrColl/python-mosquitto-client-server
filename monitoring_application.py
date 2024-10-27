@@ -15,8 +15,8 @@ from paho.mqtt.reasoncodes import ReasonCode
 from subpubClass import SubPub
 
 cafile = "./certs/ca.crt"
-username = "admin"
-password = "admin"
+# username, password = "admin", "admin"
+username, password = "monitor", "monitor"
 
 
 PossibleHUDTypes = Literal["", "moisture", "salinity", "light"]
@@ -244,16 +244,33 @@ def main():
     root = tk.Tk()
     userdata = {"tkRoot": root}
     subpub = SubPub(username, password)
-    client = subpub.connect_mqtt(on_connect, cafile, userdata)
-    subpub.loop_start()
-    subpub.subscribe(on_message, "#")
 
-    config_tk_window(root, subpub)
-    # Start the Tkinter event loop
-    root.mainloop()
+    client = None
+    try:
+        client = subpub.connect_mqtt(on_connect, cafile, userdata)
+        subpub.loop_start()
+    except TimeoutError:
+        print("The client connection timed out...")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
-    client.loop_stop()
-    client.disconnect()
+    if not client:
+        return
+
+    try:
+        subpub.subscribe(on_message, "#")
+
+        config_tk_window(root, subpub)
+        # Start the Tkinter event loop
+        root.mainloop()
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        client.loop_stop()
+        client.disconnect()
+        return
+
+
 
 
 main()
